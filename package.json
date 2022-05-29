@@ -1,0 +1,14 @@
+{
+  "name": "noding",
+  "version": "1.0.0",
+  "description": "",
+  "main": "build/index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "dimicuss",
+  "license": "GPL-2.0-only",
+  "dependencies": {
+    "typescript": "^4.7.2"
+  }
+}
