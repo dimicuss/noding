@@ -1,3 +1,8 @@
+import https from 'http';
+import { } from './types'
+
+console.log(https);
+
 function createTimer() {
 	let timerId: NodeJS.Timeout;
 
@@ -18,7 +23,7 @@ function createTimer() {
 	}
 }
 
-let leftCounts = 200;
+let leftCounts = 10;
 const timer = createTimer();
 
 timer.startTimer(() => {
