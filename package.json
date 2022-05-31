@@ -1,18 +1,14 @@
 {
-  "name": "noding",
-  "version": "1.0.0",
-  "description": "",
-  "main": "build/index.js",
-  "scripts": {
-      "test": "test",
-      "start": "typescript"
-  },
-  "author": "dimicuss",
-  "license": "GPL-2.0-only",
-  "dependencies": {},
-  "devDependencies": {
-      "@tsconfig/node16": "^1.0.2",
-      "@types/node": "^17.0.36",
-      "typescript": "^4.7.2"
-  }
+	"name": "noding",
+	"version": "1.0.0",
+	"description": "",
+	"scripts": {
+		"start": "./scripts/start"
+	},
+	"author": "dimicuss",
+	"license": "GPL-2.0-only",
+	"devDependencies": {
+		"@types/node": "^17.0.36",
+		"typescript": "^4.7.2"
+	}
 }

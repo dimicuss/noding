@@ -1,0 +1,22 @@
+#!/bin/bash
+
+last_pid=
+
+compile_and_run () {
+	if [[ -n $last_pid ]]; then
+		kill -9 $last_pid &> /dev/null
+	fi
+   
+	npx tsc --build --verbose
+	node ./build/index.js &
+
+	last_pid=$!
+}
+
+compile_and_run
+
+while true; do
+	inotifywait -e modify -r src &> /dev/null
+	compile_and_run
+done
+
