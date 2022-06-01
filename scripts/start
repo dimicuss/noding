@@ -37,7 +37,7 @@ dispose () {
 
 execute () {
 	clear_pids
-	run_procs_s "npx tsc --build --verbose" "node build/index.js"
+	run_procs_s "npx tsc --build --verbose" "node build"
 }
 
 
@@ -48,3 +48,6 @@ while true; do
 	inotifywait -e modify -r src &> /dev/null
 	execute
 done
+
+# TODO create /dev/shm build directory to reduce disk usage
+# TODO create ENV to store variable info about build

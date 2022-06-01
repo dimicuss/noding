@@ -1,37 +1,19 @@
-import https from 'http';
-import { } from './types'
+import { createList, createMessage } from './utils/createList';
+import { createTimer } from './utils/createTimer';
 
-console.log(https);
+const messages = [
+	['Timer in'],
+	['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+	["Timer out"],
+]
+	.flat()
+	.map(message => createMessage(message))
 
-function createTimer() {
-	let timerId: NodeJS.Timeout;
+const timer = createTimer(1000)
 
-	function clear() {
-		clearTimeout(timerId);
+timer.startTimer((start, messagesList) => {
+	messagesList?.item.print();
+	if (messagesList?.next) {
+		start(messagesList.next)
 	}
-
-	function startTimer(callback: () => void, timeout: number) {
-		callback()
-		setTimeout(() => {
-			startTimer(callback, timeout);
-		}, timeout)
-	}
-
-	return {
-		clear,
-		startTimer,
-	}
-}
-
-let leftCounts = 10;
-const timer = createTimer();
-
-timer.startTimer(() => {
-	console.log(leftCounts)
-	if (leftCounts) {
-		--leftCounts;
-	} else {
-		timer.clear();
-		process.exit();
-	}
-}, 1000)
+}, createList(messages))

@@ -1,3 +1,4 @@
-export interface SomeInterface {
-	someValue?: number | undefined;
-}
+export type List<T> = {
+	item: T;
+	next: List<T> | null;
+} | null
