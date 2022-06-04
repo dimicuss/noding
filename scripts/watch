@@ -35,7 +35,7 @@ dispose () {
 watch () {
 	clear_procs
 	exec_procs "$@" &
-	nullstd inotifywait -e modify -r src && watch "$@"
+	nullstd inotifywait -e modify -r src && echo -ne "\n\nRebuild...\n\n" && watch "$@"
 }
 
 trap dispose SIGINT
