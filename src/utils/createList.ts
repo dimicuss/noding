@@ -11,7 +11,7 @@ export function createList<Item>(list: Item[]): List<Item> {
 		: null
 }
 
-export function createMessage(message: string) {
+export function createMessage<T>(message: T) {
 	return {
 		print: () => {
 			console.log(message)

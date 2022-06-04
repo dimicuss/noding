@@ -1,0 +1,43 @@
+#!/bin/bash
+
+PIDS="$(mktemp)"
+
+nullstd () {
+	$@ &> /dev/null
+}
+
+exec_proc () {
+	$@ &
+	echo "$!" >> "$PIDS"
+	nullstd wait "$!"
+	local FILTERED_PIDS=$(cat "$PIDS" | sed "/$!/d")
+	echo "$FILTERED_PIDS" > "$PIDS"
+}
+
+exec_procs () {
+	if (( $# > 0 )); then
+		exec_proc "$1" && shift && exec_procs "$@"
+	fi
+}
+
+clear_procs () {
+	for i in $(cat "$PIDS"); do
+		kill -9 "$i"
+	done
+	echo > "$PIDS"
+}
+
+dispose () {
+	rm "$PIDS"
+	exit
+}
+
+watch () {
+	clear_procs
+	exec_procs "$@" &
+	nullstd inotifywait -e modify -r src && watch "$@"
+}
+
+trap dispose SIGINT
+
+watch "$@"
