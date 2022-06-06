@@ -1,8 +1,8 @@
 import { createServer, ServerResponse } from "http";
-import { createList } from "./utils/createList";
-import { defaultString } from "./utils/defaults";
-import { parse } from "./utils/parse";
-import { readFiles } from "./utils/readFiles";
+import { createList } from "../utils/createList";
+import { defaultString } from "../utils/defaults";
+import { parse } from "../utils/parse";
+import { readFiles } from "../utils/readFiles";
 
 function writeNumbers(res: ServerResponse) {
 	let counter = 0;
@@ -39,3 +39,5 @@ createServer((req, res) => {
 	)
 })
 	.listen(8080)
+
+console.log('Server started')
