@@ -1,0 +1,3 @@
+#!/bin/bash
+
+./scripts/watch "npx tsc --outDir build" "node build/$1"

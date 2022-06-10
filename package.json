@@ -3,9 +3,7 @@
 	"version": "1.0.0",
 	"description": "",
 	"scripts": {
-		"files": "./scripts/watch \"npx tsc --outDir build\" \"node build/files\"",
-		"socket": "./scripts/watch \"npx tsc --outDir build\" \"node build/socket\"",
-		"spawn": "./scripts/watch \"npx tsc --outDir build\" \"node build/spawn\""
+		"start": "./scripts/start"
 	},
 	"author": "dimicuss",
 	"license": "GPL-2.0-only",
