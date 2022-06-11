@@ -1,17 +1,13 @@
-import { parse as qsParse } from "querystring";
-import { ParsedQuery } from "../types";
+import { IncomingMessage } from 'http';
 import { defaultString } from "./defaults";
 
-function toArray<T>(value: T | T[]) {
-	return value instanceof Array
-		? value
-		: value !== null && value !== undefined ? [value] : []
-}
-
-export function parse(query: string): ParsedQuery {
-	const parsedQuery = qsParse(query.replace(/^\/\?/, ''));
+export function getQuery(req: IncomingMessage) {
+	const url = new URL(defaultString(req.url), `http://${req.headers.host}`);
+	const search = new URLSearchParams(url.searchParams);
 
 	return {
-		file: toArray(parsedQuery.file).map(defaultString)
+		dir: search.getAll('dir').filter((item) => item !== ''),
+		from: search.getAll('from').join(),
+		to: search.getAll('to').join()
 	}
 }

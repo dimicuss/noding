@@ -1,43 +1,44 @@
-import { createServer, ServerResponse } from "http";
-import { createList } from "../utils/createList";
-import { defaultString } from "../utils/defaults";
-import { parse } from "../utils/parse";
-import { readFiles } from "../utils/readFiles";
+import { createWriteStream } from "fs";
+import { createServer } from "http";
+import { mergeMap, EMPTY } from "rxjs";
+import { Encoding } from "../types";
+import { getQuery } from "../utils/parse";
+import { readdir, readFile, stat, writeFile } from "../utils/rxBindings";
 
-function writeNumbers(res: ServerResponse) {
-	let counter = 0;
-	for (let i = 0; i <= 100; i++) {
-		res.write(`${counter}\n`)
-		counter++
-	}
-}
-
-function formatResponseData(data: string) {
-	return `\n\n${data}\n\n`
-}
+const logFile = '/tmp/logfile'
 
 createServer((req, res) => {
-	const url = defaultString(req?.url)
-	const parsedQuery = parse(url)
+	const { dir, from, to } = getQuery(req)
 
-	res.writeHead(200, { 'Content-type': 'text/plain' })
+	const writeStream = createWriteStream(logFile, {
+		flags: 'a',
+		encoding: Encoding.Utf8,
+		mode: 0o666
+	})
 
-	writeNumbers(res)
-
-	readFiles(
-		createList(parsedQuery.file),
-		(data) => {
-			console.log('File sended')
-			res.write(formatResponseData(data))
+	readdir(...dir).pipe(
+		mergeMap((contents) => stat(...contents)),
+		mergeMap(({ path, stats }) => stats.isFile() ? readFile(path) : EMPTY),
+		mergeMap(({ path, content }) => writeFile({
+			path,
+			content: content.replace(from, to)
+		})),
+	).subscribe({
+		next(path) {
+			console.log(`LOG: Modified ${path}`)
+			writeStream.write(`Changed ${path} on ${new Date()}\n`, Encoding.Utf8)
 		},
-		(err) => {
-			res.write(formatResponseData(err.message))
-		},
-		() => {
+		error(err) {
 			res.end()
+			writeStream.end()
+			console.error(`ERROR: ${err}`)
+		},
+		complete() {
+			res.end()
+			writeStream.end()
+			console.log('LOG: Query complete')
 		}
-	)
-})
-	.listen(8080)
+	});
+}).listen(8080)
 
 console.log('Server started')
