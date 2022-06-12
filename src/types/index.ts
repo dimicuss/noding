@@ -1,25 +1,28 @@
 import fs from "fs"
 
-export type List<T> = {
+export type ActualList<T> = {
 	item: T
+	list: T[]
 	next: List<T> | null
-} | null
+}
+
+export type List<T> = ActualList<T> | null
 
 export enum Encoding {
 	Utf8 = 'utf8',
 }
 
 export interface StatResult {
-	path: fs.PathLike
+	path: string
 	stats: fs.Stats
 }
 
 export interface WriteFileArg {
-	path: fs.PathLike
+	path: string
 	content: string
 }
 
 export interface ReadFileResult {
-	path: fs.PathLike
+	path: string
 	content: string
 }
