@@ -1,92 +1,123 @@
 import fs from "fs"
 import { resolve } from "path"
-import { Observable } from "rxjs"
-import { Encoding, ReadFileResult, StatResult, WriteFileArg } from "../types"
+import { merge, Observable } from "rxjs"
+import { Encoding, ReadFileResult, Result, StatResult, WriteFileArg } from "../types"
 
-export function executeParallel<T>(items: T[], onNext: (list: T, check: () => void) => void, onEnd: () => void) {
-	let last = items.length;
-
-	items.forEach((item) => {
-		onNext(item, () => {
-			last--
-			if (last === 0) {
-				onEnd()
-			}
-		})
-	})
+export function createError<T>(error: any): Result<T> {
+	return { error }
 }
 
-export function readdir(paths: string[], onError?: (error: any) => void) {
-	return new Observable<string[]>((subscriber) => {
-		executeParallel(paths, (dir, resume) => {
-			fs.readdir(dir, (error, names) => {
+export function createResult<T>(result: T): Result<T> {
+	return { result }
+}
+
+export function readdir(...paths: string[]) {
+	const observables = paths.map((path) => {
+		return new Observable<Result<string[]>>((subscriber) => {
+			fs.readdir(path, (error, names) => {
 				if (error) {
-					onError?.(error)
-					resume()
+					subscriber.next(createError(error))
 				} else {
-					subscriber.next(names.map((name) => resolve(dir, name)))
-					resume()
+					subscriber.next(createResult(names.map((name) => resolve(path, name))))
 				}
+				subscriber.complete()
 			})
-		}, () => {
-			subscriber.complete()
 		})
 	})
+
+
+	return merge(...observables)
 }
 
-
-export function readFile(paths: string[], onError?: (error: any) => void) {
-	return new Observable<ReadFileResult>((subscriber) => {
-		executeParallel(paths, (path, resume) => {
+export function readFile(...paths: string[]) {
+	const observables = paths.map((path) => {
+		return new Observable<Result<ReadFileResult>>((subscriber) => {
 			fs.readFile(path, Encoding.Utf8, (error, content) => {
 				if (error) {
-					onError?.(error)
-					resume()
+					subscriber.next(createError(error))
 				} else {
-					subscriber.next({ path, content })
-					resume()
+					subscriber.next(createResult({ path, content }))
 				}
+				subscriber.complete()
 			})
-		}, () => {
-			subscriber.complete()
 		})
-	})
+	});
+
+	return merge(...observables)
 }
 
-export function stat(paths: string[], onError?: (error: any) => void) {
-	return new Observable<StatResult>((subscriber) => {
-		executeParallel(paths, (path, resume) => {
+export function stat(...paths: string[]) {
+	const observables = paths.map((path) => {
+		return new Observable<Result<StatResult>>((subscriber) => {
 			fs.stat(path, (error, stats) => {
 				if (error) {
-					onError?.(error)
-					resume()
+					subscriber.next(createError(error))
 				} else {
-					subscriber.next({ path, stats })
-					resume()
+					subscriber.next(createResult({ path, stats }))
 				}
+				subscriber.complete()
 			})
-		}, () => {
-			subscriber.complete()
 		})
 	})
+
+	return merge(...observables)
 }
 
-export function writeFile(args: WriteFileArg[], onError?: (error: any) => void) {
-	return new Observable<string>((subscriber) => {
-		executeParallel(args, (arg, resume) => {
-			const { path, content } = arg
+export function writeFile(...args: WriteFileArg[]) {
+	const observables = args.map((arg) => {
+		const { path, content } = arg
+		return new Observable<Result<string>>((subscriber) => {
 			fs.writeFile(path, content, (error) => {
 				if (error) {
-					onError?.(error)
-					resume()
+					subscriber.next(createError(error))
 				} else {
-					subscriber.next(path)
-					resume()
+					subscriber.next(createResult(path))
 				}
+				subscriber.complete()
 			})
-		}, () => {
-			subscriber.complete()
-		})
-	})
+		});
+	});
+
+	return merge(...observables)
 }
 
+export function suppres<T>(handleError: (error: any) => void) {
+	return (observable: Observable<Result<T>>) => {
+		return new Observable<T>((subscriber) => {
+			observable.subscribe({
+				next({ error, result }) {
+					if (error) {
+						handleError(error)
+					} else if (result) {
+						subscriber.next(result)
+					}
+				},
+				error(error) {
+					subscriber.error(error)
+				},
+				complete() {
+					subscriber.complete()
+				}
+			})
+		})
+	}
+}
+
+export function side<T>(sideEffect: (item: T) => void) {
+	return (observable: Observable<T>) => {
+		return new Observable<T>((subscriber) => {
+			observable.subscribe({
+				next(item) {
+					sideEffect(item)
+					subscriber.next(item)
+				},
+				error(error) {
+					subscriber.error(error)
+				},
+				complete() {
+					subscriber.complete()
+				}
+			})
+		})
+	}
+}

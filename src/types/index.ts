@@ -12,6 +12,11 @@ export enum Encoding {
 	Utf8 = 'utf8',
 }
 
+export type Result<T> = {
+	error?: any | null,
+	result?: T,
+}
+
 export interface StatResult {
 	path: string
 	stats: fs.Stats
