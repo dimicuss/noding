@@ -1,8 +1,9 @@
 import { IncomingMessage } from 'http';
+import { Protocols } from '../types';
 import { defaultString } from "./defaults";
 
-export function getQuery(req: IncomingMessage) {
-	const url = new URL(defaultString(req.url), `http://${req.headers.host}`);
+export function getQuery(req: IncomingMessage, protocol: Protocols = Protocols.Http) {
+	const url = new URL(defaultString(req.url), `${protocol}://${req.headers.host}`);
 	const search = new URLSearchParams(url.searchParams);
 
 	return {

@@ -1,4 +1,4 @@
-import fs from "fs"
+import fs, { Stats } from "fs"
 import { resolve } from "path"
 import { merge, Observable } from "rxjs"
 import { Encoding, ReadFileResult, Result, StatResult, WriteFileArg } from "../types"
@@ -11,83 +11,167 @@ export function createResult<T>(result: T): Result<T> {
 	return { result }
 }
 
-export function readdir(...paths: string[]) {
-	const observables = paths.map((path) => {
-		return new Observable<Result<string[]>>((subscriber) => {
-			fs.readdir(path, (error, names) => {
-				if (error) {
-					subscriber.next(createError(error))
-				} else {
-					subscriber.next(createResult(names.map((name) => resolve(path, name))))
-				}
-				subscriber.complete()
-			})
-		})
-	})
+export function createRegister(onEnd: () => void) {
+	let completed = false;
+	let tasks: ((completeTask: () => void) => void)[] = []
 
-
-	return merge(...observables)
+	return {
+		addTask: (task: (completeTask: () => void) => void) => {
+			if (!completed) {
+				tasks.push(task)
+				task(() => {
+					tasks = tasks.filter((taskToRemove) => taskToRemove !== task)
+					if (completed && tasks.length === 0) {
+						onEnd()
+					}
+				})
+			}
+		},
+		complete: () => {
+			if (tasks.length > 0) {
+				completed = true
+			} else {
+				onEnd();
+			}
+		}
+	}
 }
 
-export function readFile(...paths: string[]) {
-	const observables = paths.map((path) => {
-		return new Observable<Result<ReadFileResult>>((subscriber) => {
-			fs.readFile(path, Encoding.Utf8, (error, content) => {
-				if (error) {
-					subscriber.next(createError(error))
-				} else {
-					subscriber.next(createResult({ path, content }))
-				}
-				subscriber.complete()
-			})
+export function readdir(o: Observable<string>) {
+	return new Observable<Result<string>>((_) => {
+		const register = createRegister(() => {
+			_.complete()
 		})
-	});
-
-	return merge(...observables)
-}
-
-export function stat(...paths: string[]) {
-	const observables = paths.map((path) => {
-		return new Observable<Result<StatResult>>((subscriber) => {
-			fs.stat(path, (error, stats) => {
-				if (error) {
-					subscriber.next(createError(error))
-				} else {
-					subscriber.next(createResult({ path, stats }))
-				}
-				subscriber.complete()
-			})
-		})
-	})
-
-	return merge(...observables)
-}
-
-export function writeFile(...args: WriteFileArg[]) {
-	const observables = args.map((arg) => {
-		const { path, content } = arg
-		return new Observable<Result<string>>((subscriber) => {
-			fs.writeFile(path, content, (error) => {
-				if (error) {
-					subscriber.next(createError(error))
-				} else {
-					subscriber.next(createResult(path))
-				}
-				subscriber.complete()
-			})
+		const s = o.subscribe({
+			next(dir) {
+				register.addTask((completeTask) => {
+					fs.readdir(dir, (error, contents) => {
+						if (error) {
+							_.next(createError(error))
+						} else {
+							contents.forEach((content) => {
+								_.next(createResult(resolve(dir, content)))
+							})
+						}
+						completeTask()
+					})
+				})
+			},
+			error(error) {
+				_.error(error)
+			},
+			complete() {
+				register.complete()
+			}
 		});
-	});
 
-	return merge(...observables)
+		return () => {
+			s.unsubscribe()
+		}
+	});
 }
 
-export function suppres<T>(handleError: (error: any) => void) {
+export function readFile(o: Observable<string>) {
+	return new Observable<Result<string>>((_) => {
+		const register = createRegister(() => {
+			_.complete()
+		})
+		const s = o.subscribe({
+			next(path) {
+				register.addTask((completeTask) => {
+					fs.readFile(path, Encoding.Utf8, (error, content) => {
+						if (error) {
+							_.next(createError(error))
+						} else {
+							_.next(createResult(content))
+						}
+						completeTask()
+					})
+				})
+			},
+			error(error) {
+				_.error(error)
+			},
+			complete() {
+				register.complete()
+			}
+		});
+
+		return () => {
+			s.unsubscribe()
+		}
+	});
+}
+
+export function stat(o: Observable<string>) {
+	return new Observable<Result<Stats>>((_) => {
+		const register = createRegister(() => {
+			_.complete()
+		})
+		const s = o.subscribe({
+			next(file) {
+				register.addTask((completeTask) => {
+					fs.stat(file, (error, stats) => {
+						if (error) {
+							_.next(createError(error))
+						} else {
+							_.next(createResult(stats))
+						}
+						completeTask()
+					})
+				})
+			},
+			error(error) {
+				_.error(error)
+			},
+			complete() {
+				register.complete()
+			}
+		})
+		return () => {
+			s.unsubscribe()
+		}
+	});
+}
+
+export function writeFile(o: Observable<WriteFileArg>) {
+	return new Observable<Result<string>>((_) => {
+		const register = createRegister(() => {
+			_.complete()
+		})
+		const s = o.subscribe({
+			next({ path, content }) {
+				register.addTask((completeTask) => {
+					fs.writeFile(path, content, (error) => {
+						if (error) {
+							_.next(createError(error))
+						} else {
+							_.next(createResult(path))
+						}
+						completeTask()
+					})
+				})
+			},
+			error(error) {
+				_.error(error)
+			},
+			complete() {
+				register.complete()
+			}
+		})
+		return () => {
+			s.unsubscribe()
+		}
+	});
+}
+
+export function suppres<T>(handleError?: (error: any) => void) {
 	return (observable: Observable<Result<T>>) => {
 		return new Observable<T>((subscriber) => {
 			observable.subscribe({
 				next({ error, result }) {
 					if (error) {
-						handleError(error)
+						handleError?.(error)
 					} else if (result) {
 						subscriber.next(result)
 					}

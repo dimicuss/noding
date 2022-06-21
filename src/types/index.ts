@@ -12,6 +12,11 @@ export enum Encoding {
 	Utf8 = 'utf8',
 }
 
+export enum Protocols {
+	Http = 'http',
+	Https = 'https'
+}
+
 export type Result<T> = {
 	error?: any | null,
 	result?: T,
