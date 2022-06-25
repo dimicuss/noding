@@ -1,10 +1,10 @@
 import { createWriteStream } from "fs"
 import { createServer } from "http"
-import { mergeMap, EMPTY, of, map } from "rxjs"
+import { mergeMap, EMPTY, of, map, tap } from "rxjs"
 import { Encoding } from "../types"
 import { createLogger } from "../utils/createLogger"
 import { getQuery } from "../utils/getQuery"
-import { suppres, side, readdir, readFile, stat, writeFile } from "../utils/rxBindings"
+import { readdir, readFile, stat, writeFile } from "../utils/rxBindings"
 
 const logFile = '/tmp/logfile'
 
@@ -21,37 +21,28 @@ createServer((req, res) => {
 
 	of(...dir).pipe(
 		readdir,
-		suppres((error) => {
-			err(error)
-		}),
-		side((path) => {
+		tap((path) => {
 			info(`${path} readed`)
 		}),
 		mergeMap((path) => of(path).pipe(
 			stat,
-			suppres((error) => {
-				err(error)
-			}),
-			side(() => {
+			tap(() => {
 				info(`Stat for path "${path}"`)
 			}),
 			mergeMap((stats) => stats.isFile() ? of(path).pipe(readFile) : EMPTY),
-			suppres((error) => {
-				err(error)
-			}),
-			side(() => {
+			tap(() => {
 				info(`File "${path}" readed`)
 			}),
-			map((content) => ({ path, content: content.replace(from, to) })),
+			map((content) => [path, content.replace(from, to)] as [string, string]),
 			writeFile,
-			suppres((error) => {
-				err(error)
-			}),
-			side(() => {
+			tap(() => {
 				info(`Changed "${path}" from "${from}" to "${to}"`)
 			})
 		))
 	).subscribe({
+		error(error) {
+			err(error)
+		},
 		complete() {
 			info('Process ended')
 			res.end()

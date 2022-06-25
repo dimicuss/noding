@@ -17,6 +17,11 @@ export enum Protocols {
 	Https = 'https'
 }
 
+export enum ContentTypes {
+	TextPlain = 'text/plain',
+	TextHtml = 'text/html'
+}
+
 export type Result<T> = {
 	error?: any | null,
 	result?: T,
@@ -36,3 +41,4 @@ export interface ReadFileResult {
 	path: string
 	content: string
 }
+
