@@ -42,7 +42,6 @@ createServer((req, res) => {
 		next({ type, data }) {
 			res.setHeader('Content-type', type)
 			res.write(data)
-			res.end()
 		},
 		error(error) {
 			err(error)
