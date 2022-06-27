@@ -19,25 +19,20 @@ createServer((req, res) => {
 
 	of(url).pipe(
 		stat,
-		mergeMap((stat) => {
-			if (stat.isFile()) {
-				return zip(
+		mergeMap((stat) =>
+			stat.isFile()
+				? zip(
 					of(`printf $(file -b --mime-type ${url})`).pipe(exec),
 					of(url).pipe(createReadStream)
 				).pipe(
 					map(([type, data]) => ({ type, data }))
 				)
-			}
-
-			return of(url).pipe(
-				readdir,
-				reduce((acc, file) => acc + `${file}\n`, ''),
-				map((data) => ({
-					type: ContentTypes.TextPlain,
-					data: data,
-				}))
-			)
-		}),
+				: of(url).pipe(
+					readdir,
+					reduce((acc, file) => acc + `${file}\n`, ''),
+					map((data) => ({ type: ContentTypes.TextPlain, data }))
+				)
+		),
 	).subscribe({
 		next({ type, data }) {
 			res.setHeader('Content-type', type)
