@@ -29,7 +29,7 @@ createServer((req, res) => {
 				)
 				: of(url).pipe(
 					readdir,
-					reduce((acc, file) => acc + `${file}\n`, ''),
+					reduce((acc, file) => `${acc}${file}\n`, ''),
 					map((data) => ({ type: ContentTypes.TextPlain, data }))
 				)
 		),
