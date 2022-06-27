@@ -22,7 +22,7 @@ createServer((req, res) => {
 		mergeMap((stat) =>
 			stat.isFile()
 				? zip(
-					of(`printf $(file -b --mime-type ${url})`).pipe(exec),
+					of(`echo -n $(file -b --mime-type ${url})`).pipe(exec),
 					of(url).pipe(createReadStream)
 				).pipe(
 					map(([type, data]) => ({ type, data }))
