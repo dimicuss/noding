@@ -17,7 +17,7 @@ const { info, err } = createLogger(
 )
 
 createServer((req, res) => {
-	const { dir, from, to } = getQuery(req)
+	const { dir, from, to } = getQuery(req).query
 
 	of(...dir).pipe(
 		readdir,

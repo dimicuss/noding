@@ -101,20 +101,26 @@ export const writeFile = createOperator<[string, string], string>(([path, conten
 })
 
 export const exec = createOperator<string, string>((command, _, completeTask) => {
-	const childProcess = cp.exec(command, { encoding: Encoding.Utf8 })
+	const childProcess = cp.exec(command)
 	childProcess.stdin?.end()
 	childProcess.stdout?.on('data', (data) => {
 		_.next(data)
 	})
-	childProcess.on('close', () => {
+	childProcess.stderr?.once('data', () => {
+		_.error(new Error(command))
+	})
+	childProcess.stdout?.on('end', () => {
 		completeTask()
 	})
 })
 
 export const createReadStream = createOperator<string, string | Buffer>((path, _, completeTask) => {
-	const readStream = fs.createReadStream(path, { encoding: Encoding.Utf8 })
+	const readStream = fs.createReadStream(path)
 	readStream.on('data', (data) => {
 		_.next(data)
+	})
+	readStream.on('error', (error) => {
+		_.error(error)
 	})
 	readStream.on('end', () => {
 		completeTask()
