@@ -4,6 +4,12 @@ import { Observable, Subscriber } from "rxjs"
 import { Encoding } from "../types"
 import cp from "child_process";
 
+interface RegisterSubscriber<T> {
+	complete: () => void;
+	next: (item : T) => void;
+	error: (error: unknown) => void;
+}
+
 export function createRegister(onEnd: () => void) {
 	let completed = false;
 	let tasks: ((completeTask: () => void) => void)[] = []
@@ -28,16 +34,21 @@ export function createRegister(onEnd: () => void) {
 	}
 }
 
-export function createOperator<A, B>(run: (value: A, _: Subscriber<B>, completeTask: () => void) => void) {
+export function createOperator<A, B>(runTask: (value: A, registerSubscriber: RegisterSubscriber<B>) => () => void | undefined) {
 	return (o: Observable<A>) => new Observable<B>((_) => {
+		let dropTask: () => void | undefined;
 		const register = createRegister(() => {
 			_.complete()
 		});
 
-		const sub = o.subscribe({
+		const subscription = o.subscribe({
 			next(value) {
 				register.addTask((completeTask) => {
-					run(value, _, completeTask)
+				 	dropTask = run(value, {
+						next: (item: B) => _.next(item),
+						error: (error: unknown) => _.error(error),
+						complete: () => completeTask()
+					})
 				})
 			},
 			error(error) {
@@ -49,80 +60,87 @@ export function createOperator<A, B>(run: (value: A, _: Subscriber<B>, completeT
 		})
 
 		return () => {
-			sub.unsubscribe()
+			dropTask?.()
+			subscription.unsubscribe()
 		}
 	})
 }
 
-export const readdir = createOperator<string, string>((path, _, completeTask) => {
+export const readdir = createOperator<string, string>((path, s) => {
 	fs.readdir(path, (error, contents) => {
 		if (error) {
-			_.error(error)
+			s.error(error)
 		} else {
 			contents.forEach((content) => {
-				_.next(resolve(path, content))
+				s.next(resolve(path, content))
 			})
 		}
-		completeTask()
+		s.completeTask()
 	})
 })
 
-export const readFile = createOperator<string, string>((path, _, completeTask) => {
+export const readFile = createOperator<string, string>((path, s) => {
 	fs.readFile(path, Encoding.Utf8, (error, content) => {
 		if (error) {
-			_.error(error)
+			s.error(error)
 		} else {
-			_.next(content)
+			s.next(content)
 		}
-		completeTask()
+		s.complete()
 	})
 })
 
-export const stat = createOperator<string, Stats>((path, _, completeTask) => {
+export const stat = createOperator<string, Stats>((path, s) => {
 	fs.stat(path, (error, stats) => {
 		if (error) {
-			_.error(error)
+			s.error(error)
 		} else {
-			_.next(stats)
+			s.next(stats)
 		}
-		completeTask()
+		s.complete()
 	})
 })
 
-export const writeFile = createOperator<[string, string], string>(([path, content], _, completeTask) => {
+export const writeFile = createOperator<[string, string], string>(([path, content], s) => {
 	fs.writeFile(path, content, (error) => {
 		if (error) {
-			_.error(error)
+			s.error(error)
 		} else {
-			_.next(path)
+			s.next(path)
 		}
-		completeTask()
+		s.complete()
 	})
 })
 
-export const exec = createOperator<string, string>((command, _, completeTask) => {
+export const exec = createOperator<string, string>((command, s) => {
 	const childProcess = cp.exec(command)
 	childProcess.stdin?.end()
 	childProcess.stdout?.on('data', (data) => {
-		_.next(data)
+		s.next(data)
 	})
 	childProcess.stderr?.once('data', () => {
-		_.error(new Error(command))
+		s.error(new Error(command))
 	})
 	childProcess.stdout?.on('end', () => {
-		completeTask()
+		s.complete()
 	})
+	return () => {
+		childProcess.destroy()
+	}
 })
 
-export const createReadStream = createOperator<string, string | Buffer>((path, _, completeTask) => {
+export const createReadStream = createOperator<string, string | Buffer>((path, s) => {
 	const readStream = fs.createReadStream(path)
 	readStream.on('data', (data) => {
-		_.next(data)
+		s.next(data)
 	})
 	readStream.on('error', (error) => {
-		_.error(error)
+		s.error(error)
 	})
 	readStream.on('end', () => {
-		completeTask()
+		s.complete()
 	})
+	return () => {
+		readStream.destroy()
+	}
 })
