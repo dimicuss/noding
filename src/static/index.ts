@@ -22,18 +22,18 @@ createServer((req, res) => {
 	const subscription = of(req).pipe(
 		map((req) => resolve(['.', getQuery(req).pathname].join(''))),
 		mergeMap((url) => of(url).pipe(
-			stat,
+			stat(),
 			mergeMap((stat) => iif(
 				() => stat.isFile(),
 				of(`echo -n $(file -b -L --mime-type ${url})`).pipe(
-					exec,
+					exec(),
 					mergeMap((type) => of(url).pipe(
-						createReadStream,
+						createReadStream(),
 						map((data) => ({ type, data }))
 					)),
 				),
 				of(url).pipe(
-					readdir,
+					readdir(),
 					reduce((acc, file) => `${acc}${file}\n`, ''),
 					map((data) => ({ type: ContentTypes.TextPlain, data }))
 				)
@@ -56,7 +56,7 @@ createServer((req, res) => {
 		}
 	})
 	
-	req.on('close', () => {
+	req.once('close', () => {
 		subscription.unsubscribe()
 	})
 }).listen(8080)
