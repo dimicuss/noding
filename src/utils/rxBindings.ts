@@ -66,7 +66,7 @@ export function createOperator<A, B>(runTask: (value: A, registerSubscriber: Reg
 	})
 }
 
-export const readdir = createOperator<string, string>((path, s) => {
+export const readdir = () => createOperator<string, string>((path, s) => {
 	fs.readdir(path, (error, contents) => {
 		if (error) {
 			s.error(error)
@@ -79,7 +79,7 @@ export const readdir = createOperator<string, string>((path, s) => {
 	})
 })
 
-export const readFile = createOperator<string, string>((path, s) => {
+export const readFile = () => createOperator<string, string>((path, s) => {
 	fs.readFile(path, Encoding.Utf8, (error, content) => {
 		if (error) {
 			s.error(error)
@@ -90,7 +90,7 @@ export const readFile = createOperator<string, string>((path, s) => {
 	})
 })
 
-export const stat = createOperator<string, Stats>((path, s) => {
+export const stat = () => createOperator<string, Stats>((path, s) => {
 	fs.stat(path, (error, stats) => {
 		if (error) {
 			s.error(error)
@@ -101,7 +101,7 @@ export const stat = createOperator<string, Stats>((path, s) => {
 	})
 })
 
-export const writeFile = createOperator<[string, string], string>(([path, content], s) => {
+export const writeFile = () => createOperator<[string, string], string>(([path, content], s) => {
 	fs.writeFile(path, content, (error) => {
 		if (error) {
 			s.error(error)
@@ -112,7 +112,7 @@ export const writeFile = createOperator<[string, string], string>(([path, conten
 	})
 })
 
-export const exec = createOperator<string, string>((command, s) => {
+export const exec = () => createOperator<string, string>((command, s) => {
 	const childProcess = cp.exec(command)
 	childProcess.stdin?.end()
 	childProcess.stdout?.on('data', (data) => {
@@ -129,7 +129,7 @@ export const exec = createOperator<string, string>((command, s) => {
 	}
 })
 
-export const createReadStream = createOperator<string, string | Buffer>((path, s) => {
+export const createReadStream = () => createOperator<string, string | Buffer>((path, s) => {
 	const readStream = fs.createReadStream(path)
 	readStream.on('data', (data) => {
 		s.next(data)
