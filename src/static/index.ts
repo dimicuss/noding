@@ -1,11 +1,12 @@
-import { createWriteStream } from "fs";
-import { createServer } from "http";
-import { ContentTypes, Encoding } from "../types";
-import { createLogger } from "../utils/createLogger";
-import { createReadStream, exec, readdir, stat } from "../utils/rxBindings";
-import { map, mergeMap, of, reduce, iif, catchError, tap } from "rxjs";
-import { resolve } from "path";
-import { getQuery } from "../utils/getQuery";
+import { createWriteStream } from "fs"
+import { createServer } from "http"
+import { ContentTypes, Encoding } from "../types"
+import { createLogger } from "../utils/createLogger"
+import { createReadStream, exec, readdir, stat } from "../utils/rxBindings"
+import { map, mergeMap, of, reduce, iif, catchError, tap } from "rxjs"
+import { resolve } from "path"
+import { getQuery } from "../utils/getQuery"
+import { createOnce } from "../utils/createOnce"
 
 const { err } = createLogger(
 	createWriteStream('/tmp/static_log', {
@@ -15,23 +16,10 @@ const { err } = createLogger(
 	})
 )
 
-function createOnce() {
-	let called = false;
-	return (fn: () => void) => {
-		if (!called) {
-			called = true;
-			fn();
-		}
-	}
-}
-
 createServer((req, res) => {
 	const once = createOnce();
-
-	req.on('close', () => {
-		console.log('closed')
-	})
-	of(req).pipe(
+	
+	const subscription = of(req).pipe(
 		map((req) => resolve(['.', getQuery(req).pathname].join(''))),
 		mergeMap((url) => of(url).pipe(
 			stat,
@@ -66,6 +54,10 @@ createServer((req, res) => {
 		complete() {
 			res.end();
 		}
+	})
+	
+	req.on('close', () => {
+		subscription.unsubscribe()
 	})
 }).listen(8080)
 
