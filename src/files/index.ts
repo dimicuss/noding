@@ -1,6 +1,6 @@
 import { createWriteStream } from "fs"
 import { createServer } from "http"
-import { mergeMap, EMPTY, of, map, tap } from "rxjs"
+import { mergeMap, EMPTY, of, map, tap, iif } from "rxjs"
 import { Encoding } from "../types"
 import { createLogger } from "../utils/createLogger"
 import { getQuery } from "../utils/getQuery"
@@ -27,7 +27,11 @@ createServer((req, res) => {
 			tap(() => {
 				info(`Stat for path "${path}"`)
 			}),
-			mergeMap((stats) => stats.isFile() ? of(path).pipe(readFile) : EMPTY),
+			mergeMap((stats) => iff(
+				() => stats.isFile(),
+				of(path).pipe(readFile),
+				EMPTY
+			),
 			tap(() => {
 				info(`File "${path}" readed`)
 			}),
