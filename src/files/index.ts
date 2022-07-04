@@ -6,10 +6,8 @@ import { createLogger } from "../utils/createLogger"
 import { getQuery } from "../utils/getQuery"
 import { readdir, readFile, stat, writeFile } from "../utils/rxBindings"
 
-const logFile = '/tmp/logfile'
-
 const { info, err } = createLogger(
-	createWriteStream(logFile, {
+	createWriteStream('/tmp/files_log', {
 		flags: 'a',
 		encoding: Encoding.Utf8,
 		mode: 0o666
@@ -20,12 +18,12 @@ createServer((req, res) => {
 	const { dir, from, to } = getQuery(req).query
 
 	of(...dir).pipe(
-		readdir,
+		readdir(),
 		tap((path) => {
 			info(`${path} readed`)
 		}),
 		mergeMap((path) => of(path).pipe(
-			stat,
+			stat(),
 			tap(() => {
 				info(`Stat for path "${path}"`)
 			}),
@@ -34,7 +32,7 @@ createServer((req, res) => {
 				info(`File "${path}" readed`)
 			}),
 			map((content) => [path, content.replace(from, to)] as [string, string]),
-			writeFile,
+			writeFile(),
 			tap(() => {
 				info(`Changed "${path}" from "${from}" to "${to}"`)
 			})
