@@ -17,8 +17,7 @@ const { err } = createLogger(
 )
 
 createServer((req, res) => {
-	const once = createOnce();
-	
+	const once = createOnce()
 	const subscription = of(req).pipe(
 		map((req) => resolve(['.', getQuery(req).pathname].join(''))),
 		mergeMap((url) => of(url).pipe(
@@ -29,34 +28,47 @@ createServer((req, res) => {
 					exec(),
 					mergeMap((type) => of(url).pipe(
 						createReadStream(),
-						map((data) => ({ type, data }))
+						map((data) => ({
+							type,
+							data,
+							code: 200,
+						}))
 					)),
 				),
 				of(url).pipe(
 					readdir(),
 					reduce((acc, file) => `${acc}${file}\n`, ''),
-					map((data) => ({ type: ContentTypes.TextPlain, data }))
+					map((data) => ({
+						type: ContentTypes.TextPlain,
+						data,
+						code: 200,
+					}))
 				)
 			)))
 		),
 		catchError((error) => {
 			err(error)
-			return of({ type: ContentTypes.TextPlain, data: 'Bad request' })
-		})
-	).subscribe({
-		next({ type, data }) {
-			once(() => {
-				res.setHeader('Content-type', type)
-				res.statusCode = 200
+			return of({
+				type: ContentTypes.TextPlain,
+				data: 'Bad request',
+				code: 503,
 			})
-			res.write(data)
-		},
-		complete() {
-			res.end();
-		}
-	})
-	
-	req.once('close', () => {
+		}),
+		tap({
+			next: ({ type, data, code }) => {
+				once(() => {
+					res.setHeader('Content-type', type)
+					res.statusCode = code
+				})
+				res.write(data)
+			},
+			complete: () => {
+				res.end()
+			}
+		}),
+	).subscribe()
+
+	req.on('close', () => {
 		subscription.unsubscribe()
 	})
 }).listen(8080)

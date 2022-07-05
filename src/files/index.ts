@@ -27,11 +27,11 @@ createServer((req, res) => {
 			tap(() => {
 				info(`Stat for path "${path}"`)
 			}),
-			mergeMap((stats) => iff(
+			mergeMap((stats) => iif(
 				() => stats.isFile(),
-				of(path).pipe(readFile),
+				of(path).pipe(readFile()),
 				EMPTY
-			),
+			)),
 			tap(() => {
 				info(`File "${path}" readed`)
 			}),

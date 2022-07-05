@@ -1,12 +1,12 @@
+import cp from "child_process";
 import fs, { Stats } from "fs"
 import { resolve } from "path"
-import { Observable, Subscriber } from "rxjs"
+import { Observable } from "rxjs"
 import { Encoding } from "../types"
-import cp from "child_process";
 
 interface RegisterSubscriber<T> {
 	complete: () => void;
-	next: (item : T) => void;
+	next: (item: T) => void;
 	error: (error: unknown) => void;
 }
 
@@ -34,9 +34,10 @@ export function createRegister(onEnd: () => void) {
 	}
 }
 
-export function createOperator<A, B>(runTask: (value: A, registerSubscriber: RegisterSubscriber<B>) => () => void | undefined) {
+export function createOperator<A, B>(runTask: (value: A, registerSubscriber: RegisterSubscriber<B>) => (() => void) | void) {
 	return (o: Observable<A>) => new Observable<B>((_) => {
-		let dropTask: () => void | undefined;
+		let tasksToDrop: ((() => void) | void)[] = [];
+
 		const register = createRegister(() => {
 			_.complete()
 		});
@@ -44,11 +45,13 @@ export function createOperator<A, B>(runTask: (value: A, registerSubscriber: Reg
 		const subscription = o.subscribe({
 			next(value) {
 				register.addTask((completeTask) => {
-				 	dropTask = run(value, {
-						next: (item: B) => _.next(item),
-						error: (error: unknown) => _.error(error),
-						complete: () => completeTask()
-					})
+					tasksToDrop.push(
+						runTask(value, {
+							next: (item: B) => _.next(item),
+							error: (error: unknown) => _.error(error),
+							complete: () => completeTask()
+						})
+					)
 				})
 			},
 			error(error) {
@@ -60,7 +63,9 @@ export function createOperator<A, B>(runTask: (value: A, registerSubscriber: Reg
 		})
 
 		return () => {
-			dropTask?.()
+			tasksToDrop.forEach((drop) => {
+				drop?.()
+			});
 			subscription.unsubscribe()
 		}
 	})
@@ -75,7 +80,7 @@ export const readdir = () => createOperator<string, string>((path, s) => {
 				s.next(resolve(path, content))
 			})
 		}
-		s.completeTask()
+		s.complete()
 	})
 })
 
@@ -124,8 +129,11 @@ export const exec = () => createOperator<string, string>((command, s) => {
 	childProcess.stdout?.on('end', () => {
 		s.complete()
 	})
+	childProcess.on('error', (error) => {
+		s.error(error)
+	})
 	return () => {
-		childProcess.destroy()
+		childProcess.kill()
 	}
 })
 

@@ -1,4 +1,4 @@
-function createOnce() {
+export function createOnce() {
 	let called = false;
 	return (fn: () => void) => {
 		if (!called) {
